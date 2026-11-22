@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101b2b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="3-Mile Coach">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>3-Mile Coach</title>
+<style>
+:root{--bg:#0b1220;--panel:#131f31;--panel2:#1a2940;--line:#2b3b52;--text:#f2f6fb;--muted:#a8b6c8;--accent:#78d5b0;--accent2:#b9f2dc;--warn:#ffc66d;--red:#ff8b85}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#101b2b 0,#0b1220 42%);color:var(--text);font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 0 calc(82px + env(safe-area-inset-bottom));}
+header{padding:22px 18px 14px;max-width:760px;margin:auto} .eyebrow{color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+h1{font-size:28px;line-height:1.08;margin:7px 0 5px;letter-spacing:-.04em}h2{font-size:20px;margin:0 0 12px}h3{font-size:16px;margin:0 0 8px}.sub{color:var(--muted);font-size:13px;line-height:1.45}
+main{max-width:760px;margin:auto;padding:0 14px}.screen{display:none}.screen.active{display:block}
+.card{background:rgba(19,31,49,.96);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 8px 24px #0002}
+.hero{background:linear-gradient(135deg,#1b3b43,#17283d 65%,#172236);border-color:#315b5b}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px}.stat{background:#0d1928aa;border:1px solid #ffffff12;border-radius:12px;padding:10px}.stat b{display:block;font-size:22px}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+button,select,input,textarea{font:inherit}button{border:0;border-radius:12px;background:var(--accent);color:#10221e;font-weight:800;padding:12px 14px;cursor:pointer}button.secondary{background:#24354c;color:var(--text);border:1px solid var(--line)}button.ghost{background:transparent;color:var(--accent);border:1px solid #42685f}
+select,input,textarea{width:100%;background:#0c1726;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px;margin-top:6px}
+label{font-size:12px;color:var(--muted);font-weight:700;display:block;margin:10px 0 4px}
+.progress{height:9px;background:#26364b;border-radius:99px;overflow:hidden;margin:9px 0}.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.pill{font-size:11px;border-radius:99px;padding:5px 9px;background:#243b42;color:var(--accent2);font-weight:800;white-space:nowrap}
+.workout{border:1px solid var(--line);border-radius:14px;padding:13px;margin:9px 0;background:#101b2b}
+.workout.done{border-color:#477f70;background:#142a2a}.workout.done .check{background:var(--accent);color:#10221e}
+.workout-head{display:flex;align-items:flex-start;gap:10px}.check{width:27px;height:27px;flex:0 0 27px;border:1px solid #61738b;border-radius:8px;background:#18273b;color:transparent;font-weight:900;padding:0}
+.workout-title{font-weight:800}.workout-meta{font-size:11px;color:var(--accent);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}.workout-desc{font-size:13px;color:#d1dbea;line-height:1.5;margin:9px 0 0 37px}
+.tabs{position:fixed;z-index:5;bottom:0;left:0;right:0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:#0b1220ee;border-top:1px solid var(--line);display:flex;justify-content:center;gap:5px;backdrop-filter:blur(14px)}
+.tabs button{flex:1;max-width:180px;background:transparent;color:var(--muted);padding:9px 4px;font-size:11px;border-radius:10px}.tabs button.active{background:#20364a;color:var(--accent2)}
+.tabs .ico{display:block;font-size:18px;margin-bottom:2px}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;padding:9px 5px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:10px;text-transform:uppercase}
+.note{border-left:3px solid var(--warn);padding:9px 12px;background:#2c271e;border-radius:0 9px 9px 0;color:#f5dfb8;font-size:12px;line-height:1.45}
+.good{color:var(--accent)}.muted{color:var(--muted)}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.small{font-size:11px;color:var(--muted);line-height:1.45}
+footer{text-align:center;color:#75869b;font-size:10px;padding:20px}
+@media(min-width:600px){header{padding-top:30px}main{padding:0 20px}.card{padding:20px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="eyebrow">12-week performance plan</div>
+ <h1>3-Mile Coach</h1>
+ <div class="sub">Build speed. Stay healthy. Finish strong.</div>
+</header>
+<main>
+<section id="home" class="screen active">
+ <div class="card hero">
+  <div class="row"><div><div class="eyebrow">Your mission</div><h2 style="font-size:24px;margin:5px 0">24:00 → 18:00</h2><div class="sub">Historical baseline · 6:00/mile stretch goal</div></div><span class="pill">12 WEEKS</span></div>
+  <div class="stats">
+   <div class="stat"><b id="currentWeek">1</b><span>Training week</span></div>
+   <div class="stat"><b id="doneCount">0/60</b><span>Workouts done</span></div>
+   <div class="stat"><b id="totalMiles">0</b><span>Logged miles</span></div>
+  </div>
+  <div class="progress"><i id="overallBar"></i></div><div class="small" id="progressText">Start by choosing your program start date.</div>
+ </div>
+ <div class="card">
+  <div class="row"><h2>Today's workout</h2><span class="pill" id="todayLabel">TODAY</span></div>
+  <div id="todayWorkout" class="sub">Loading today's workout…</div>
+  <div style="margin-top:12px"><button class="secondary" onclick="showTab('plan')">Open training plan →</button></div>
+ </div>
+ <div class="card">
+  <h2>Program setup</h2>
+  <label for="startDate">Program start date</label><input id="startDate" type="date">
+  <div class="small">The app calculates your training week from this date. You can change it at any time.</div>
+  <div class="note" style="margin-top:12px">Your calf has occasional tightness. The plan starts conservatively with four running days and one low-impact cross-training day. Do not run through pain or altered mechanics.</div>
+ </div>
+ <div class="card">
+  <h2>Training principles</h2>
+  <ul class="small" style="padding-left:18px;line-height:1.8">
+   <li>Easy runs should be conversational.</li><li>Warm up 10–15 minutes before quality sessions.</li><li>Stop if calf pain changes your stride.</li><li>Do not force goal pace before your benchmark supports it.</li>
+  </ul>
+ </div>
+</section>
+<section id="plan" class="screen">
+ <div class="card">
+  <div class="row"><h2>12-week plan</h2><span class="pill">4 RUN + 1 CROSS-TRAIN</span></div>
+  <label for="weekSelect">Select training week</label><select id="weekSelect"></select>
+  <div class="row" style="margin-top:12px"><div><div class="eyebrow">Weekly running target</div><h2 id="weekMiles" style="margin:4px 0">9 miles</h2></div><div style="text-align:right"><div class="eyebrow">Completed sessions</div><h2 id="weekDone" style="margin:4px 0">0 / 5</h2></div></div>
+  <div class="progress"><i id="weekBar"></i></div>
+  <div id="workoutList"></div>
+ </div>
+ <div class="card">
+  <h2>Training paces</h2>
+  <table><tr><th>Type</th><th>Initial guide</th><th>Effort</th></tr>
+   <tr><td>Recovery</td><td>9:30–10:30/mi</td><td>Very easy</td></tr><tr><td>Easy</td><td>9:00–10:00/mi</td><td>Conversational</td></tr><tr><td>Long</td><td>9:00–10:15/mi</td><td>Conversational</td></tr><tr><td>Tempo</td><td>8:15–8:45/mi*</td><td>Comfortably hard</td></tr><tr><td>Intervals</td><td>7:30–8:00/mi*</td><td>Hard, controlled</td></tr><tr><td>Goal</td><td>6:00/mi</td><td>Stretch objective</td></tr>
+  </table>
+  <p class="small">*Provisional only. Because your previous 24:00 result is old, use effort and current benchmark results to set actual paces. Do not force these numbers.</p>
+ </div>
+</section>
+<section id="log" class="screen">
+ <div class="card">
+  <h2>Weekly training log</h2>
+  <label for="logWeek">Week</label><select id="logWeek"></select>
+  <label for="actualMiles">Actual running mileage</label><input id="actualMiles" type="number" min="0" step="0.1" placeholder="e.g. 9.5">
+  <label for="bestWorkout">Best workout / benchmark</label><input id="bestWorkout" placeholder="e.g. 6 × 400m, average 1:55">
+  <label for="calfStatus">Calf status</label><select id="calfStatus"><option>No symptoms</option><option>Mild tightness</option><option>Persistent tightness</option><option>Pain</option></select>
+  <label for="effort">Overall training difficulty</label><select id="effort"><option>Easy</option><option selected>Moderate</option><option>Hard</option><option>Very hard</option></select>
+  <label for="notes">Notes</label><textarea id="notes" rows="4" placeholder="Sleep, fatigue, heart rate, missed workouts…"></textarea>
+  <button style="width:100%;margin-top:12px" onclick="saveLog()">Save weekly log</button>
+  <div id="saveStatus" class="small" style="margin-top:8px" aria-live="polite"></div>
+ </div>
+ <div class="card"><h2>Benchmark results</h2><p class="small">Record your 1-mile baseline in Week 3, 3-mile benchmark in Week 8, and final 3-mile test in Week 12. Only test when the calf is symptom-free and you are recovered.</p>
+ <label for="mile3">Week 3 · 1-mile time</label><input id="mile3" placeholder="e.g. 7:20">
+ <label for="mile8">Week 8 · 3-mile time</label><input id="mile8" placeholder="e.g. 21:30">
+ <label for="mile12">Week 12 · 3-mile time</label><input id="mile12" placeholder="e.g. 19:45">
+ <button class="secondary" style="width:100%;margin-top:12px" onclick="saveBenchmarks()">Save benchmarks</button><div id="benchStatus" class="small" style="margin-top:8px"></div>
+ </div>
+</section>
+<section id="paces" class="screen">
+ <div class="card">
+  <h2>Race pace calculator</h2><div class="small">Splits required for an 18:00 three-mile.</div>
+  <table><tr><th>Distance</th><th>Target split</th></tr><tr><td>200m</td><td>0:45</td></tr><tr><td>400m</td><td>1:30</td></tr><tr><td>800m</td><td>2:59.6</td></tr><tr><td>1,000m</td><td>3:43</td></tr><tr><td>1 mile</td><td>6:00</td></tr><tr><td>2 miles</td><td>12:00</td></tr><tr><td>3 miles</td><td>18:00</td></tr></table>
+  <label for="targetTime">Calculate pace from a 3-mile time</label><input id="targetTime" placeholder="e.g. 21:30">
+  <button class="secondary" style="width:100%;margin-top:10px" onclick="calcPace()">Calculate</button><div id="paceResult" class="good" style="margin-top:10px;font-weight:800"></div>
+ </div>
+ <div class="card">
+  <h2>Strength routines</h2>
+  <h3>Monday · Lower-body strength A</h3>
+  <table><tr><td>Goblet squat</td><td>3 × 10</td></tr><tr><td>Kettlebell Romanian deadlift</td><td>3 × 10</td></tr><tr><td>Reverse lunge</td><td>3 × 8/leg</td></tr><tr><td>Standing calf raise</td><td>3 × 15</td></tr><tr><td>Bent-knee calf raise</td><td>3 × 15</td></tr><tr><td>Plank</td><td>3 × 45 sec</td></tr></table>
+  <h3 style="margin-top:16px">Thursday · Stability strength B</h3>
+  <table><tr><td>Bulgarian split squat</td><td>3 × 8/leg</td></tr><tr><td>Single-leg RDL</td><td>3 × 8/leg</td></tr><tr><td>Step-ups</td><td>3 × 10/leg</td></tr><tr><td>Tibialis raises</td><td>3 × 15</td></tr><tr><td>Side plank</td><td>3 × 30 sec/side</td></tr><tr><td>Bent-knee calf raise</td><td>3 × 15</td></tr></table>
+  <p class="small">Start with manageable resistance. Thursday strength should be light enough not to compromise Friday or Sunday running.</p>
+ </div>
+ <div class="card">
+  <h2>Data & privacy</h2><p class="small">Your logs are saved on this device in this browser. They are not uploaded to an account and do not automatically sync to other devices. Export a backup periodically.</p>
+  <div class="two"><button class="secondary" onclick="exportData()">Export backup</button><button class="secondary" onclick="document.getElementById('importFile').click()">Import backup</button></div>
+  <input id="importFile" type="file" accept="application/json" style="display:none" onchange="importData(event)">
+  <button class="ghost" style="width:100%;margin-top:10px" onclick="resetData()">Reset all app data</button>
+ </div>
+</section>
+<footer>3-Mile Coach · Training is a process, not a promise.</footer>
+</main>
+<nav class="tabs">
+ <button class="active" data-tab="home" onclick="showTab('home')"><span class="ico">⌂</span>Home</button>
+ <button data-tab="plan" onclick="showTab('plan')"><span class="ico">▤</span>Plan</button>
+ <button data-tab="log" onclick="showTab('log')"><span class="ico">✓</span>Log</button>
+ <button data-tab="paces" onclick="showTab('paces')"><span class="ico">↗</span>Tools</button>
+</nav>
+<script>
+const plan = [
+{m:9,days:[
+["Monday","Easy run + strength A","2 mi easy at conversational effort. Then strength A; keep calf work controlled."],
+["Tuesday","Easy run + strides","2 mi easy, then 4 × 20-sec relaxed strides; walk 60 sec between. No sprinting."],
+["Wednesday","Rest","Rest or gentle mobility."],
+["Thursday","Bike + strength B","Bike 30 min easy/moderate, then light strength B. No hard intervals."],
+["Friday","Easy run","2 mi easy. Keep the effort comfortable."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","3 mi easy, conversational pace."]
+]},
+{m:10,days:[
+["Monday","Easy run + strength A","2 mi easy, then strength A."],
+["Tuesday","Controlled 200m intervals","2.5 mi total including warm-up/cooldown: 6 × 200m at controlled fast effort; 200m walk/jog recovery. Never sprint."],
+["Wednesday","Rest","Rest or gentle mobility."],
+["Thursday","Row + strength B","Row 30 min easy, then light strength B."],
+["Friday","Easy run","2 mi easy."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","3.5 mi easy."]
+]},
+{m:11,days:[
+["Monday","Easy run + strength A","2.5 mi easy, then strength A."],
+["Tuesday","Controlled 400m intervals","3 mi total: 6 × 400m at controlled current 3-mile effort; 200m jog recovery. If no reliable pace, run by effort."],
+["Wednesday","Rest","Rest."],
+["Thursday","Bike + strength B","Bike 35 min easy, then strength B."],
+["Friday","Easy run","2 mi easy."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","3.5 mi easy."]
+]},
+{m:10,days:[
+["Monday","Easy run + strength A","2 mi easy, then strength A."],
+["Tuesday","Recovery intervals","2.5 mi total: 4 × 400m at controlled fast effort; 2-min recovery. Do not race the reps."],
+["Wednesday","Rest","Rest."],
+["Thursday","Row + light strength B","Row 25–30 min easy; light strength and mobility."],
+["Friday","Easy run","2 mi easy."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","3.5 mi easy."]
+]},
+{m:12.5,days:[
+["Monday","Easy run + strength A","2.5 mi easy, then strength A."],
+["Tuesday","800m intervals","3.5 mi total: 3 × 800m at controlled 5K effort; 2:30 jog/walk recovery. Warm up and cool down."],
+["Wednesday","Rest","Rest."],
+["Thursday","Bike + strength B","Bike 35–40 min easy/moderate, then strength B."],
+["Friday","Easy run","2.5 mi easy."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","4 mi easy."]
+]},
+{m:13.5,days:[
+["Monday","Easy run + strength A","2.5 mi easy, then strength A."],
+["Tuesday","800m intervals","3.5 mi total: 5 × 800m at current 5K effort; 2-min recovery. Keep repetitions even."],
+["Wednesday","Rest","Rest."],
+["Thursday","Row + strength B","Row 35 min easy, then strength B."],
+["Friday","Easy run","2.5 mi easy."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","5 mi easy."]
+]},
+{m:14.5,days:[
+["Monday","Easy run + strength A","3 mi easy, then strength A."],
+["Tuesday","Tempo run","3.5 mi total: 10-min warm-up, 20-min comfortably hard tempo, cooldown. Tempo is not an all-out effort."],
+["Wednesday","Rest","Rest."],
+["Thursday","Bike + strength B","Bike 40 min easy, then strength B."],
+["Friday","Easy run + strides","2.5 mi easy + 4 relaxed strides."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","5.5 mi easy."]
+]},
+{m:12,days:[
+["Monday","Easy run + strength A","2.5 mi easy, then strength A."],
+["Tuesday","Controlled 400m intervals","3 mi total: 6 × 400m at controlled 5K effort; 2-min recovery."],
+["Wednesday","Rest","Rest."],
+["Thursday","Easy bike + light strength","Bike 25–30 min easy; light strength only."],
+["Friday","Easy run","2 mi easy."],
+["Saturday","Rest","Rest."],
+["Sunday","Benchmark / long run","If calf is symptom-free and recovered: 3-mile benchmark with warm-up/cooldown, replacing the 4.5-mi easy run. Otherwise 4.5 mi easy."]
+]},
+{m:15.5,days:[
+["Monday","Easy run + strength A","3 mi easy, then strength A."],
+["Tuesday","800m speed endurance","4 mi total: 5 × 800m at current 5K effort; 2-min recovery. Do not force goal pace."],
+["Wednesday","Rest","Rest."],
+["Thursday","Bike + strength B","Bike 40 min easy, then strength B."],
+["Friday","Easy run","2.5 mi easy."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","6 mi easy."]
+]},
+{m:15.5,days:[
+["Monday","Easy run + strength A","3 mi easy, then strength A."],
+["Tuesday","1,000m intervals","4 mi total: 4 × 1,000m at current 3-mile race effort; 2:30 recovery. Goal pace only if benchmark and recovery support it."],
+["Wednesday","Rest","Rest."],
+["Thursday","Row + strength B","Row 35 min easy, then strength B."],
+["Friday","Easy run + strides","2.5 mi easy + 4 relaxed strides."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","6 mi easy."]
+]},
+{m:13,days:[
+["Monday","Easy run + strength A","2.5 mi easy, then strength A."],
+["Tuesday","Race-specific intervals","3.5 mi total: 3 × 1,000m at projected 3-mile race pace; 3-min recovery. Use current fitness, not wishful pace."],
+["Wednesday","Rest","Rest."],
+["Thursday","Easy bike + light strength","Bike 25–30 min easy; light strength only."],
+["Friday","Easy run","2 mi easy."],
+["Saturday","Rest","Rest."],
+["Sunday","Long easy run","5 mi easy."]
+]},
+{m:9.5,days:[
+["Monday","Easy run + mobility","2 mi easy; skip heavy strength."],
+["Tuesday","Sharpening intervals","2.5 mi total: 4 × 400m at goal pace only if achievable; 2-min recovery. Otherwise current 3-mile effort."],
+["Wednesday","Rest","Rest."],
+["Thursday","Easy bike + mobility","20 min easy bike, mobility; no strength loading."],
+["Friday","Easy run","2 mi very easy."],
+["Saturday","Rest","Complete rest."],
+["Sunday","Final 3-mile test","3-mile test. Warm up 10–15 min and cool down 10 min; if counting all running, log warm-up/cooldown separately from the 3-mile result."]
+]}
+];
+const KEY="threeMileCoach.v1";
+let data={startDate:"",done:{},logs:{},benchmarks:{}};
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"{}");data={...data,...x};}catch(e){}}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));renderAll();}
+function dateForWeek(w){if(!data.startDate)return null;let d=new Date(data.startDate+"T12:00:00");d.setDate(d.getDate()+(w-1)*7);return d}
+function calcCurrentWeek(){if(!data.startDate)return 1;let s=new Date(data.startDate+"T12:00:00"),n=new Date();return Math.max(1,Math.min(12,Math.floor((n-s)/(7*86400000))+1))}
+function showTab(t){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===t));document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));window.scrollTo(0,0)}
+function dayIndex(){return (new Date().getDay()+6)%7}
+function workoutId(w,d){return w+"-"+d}
+function renderPlan(){let w=+(document.getElementById("weekSelect").value||1),p=plan[w-1],done=0;document.getElementById("weekMiles").textContent=p.m+" miles";let html="";p.days.forEach((d,i)=>{let id=workoutId(w,i),isDone=!!data.done[id];if(isDone)done++;let dist=d[2].match(/(?:\d+(?:\.\d+)?) mi/);html+=`<div class="workout ${isDone?'done':''}"><div class="workout-head"><button class="check" aria-label="Toggle completion" onclick="toggleDone('${id}')">${isDone?'✓':''}</button><div style="flex:1"><div class="row"><div class="workout-title">${d[0]} · ${d[1]}</div><span class="pill">${i===2||i===5?'REST':(i===3?'CROSS':'RUN')}</span></div><div class="workout-meta">${d[2].slice(0,75)}${d[2].length>75?'…':''}</div></div></div><div class="workout-desc">${d[2]}</div></div>`});document.getElementById("workoutList").innerHTML=html;document.getElementById("weekDone").textContent=done+" / 5";document.getElementById("weekBar").style.width=(done/5*100)+"%"}
+function toggleDone(id){data.done[id]=!data.done[id];save();renderPlan()}
+function renderHome(){let w=calcCurrentWeek(),done=Object.values(data.done).filter(Boolean).length,total=60,miles=Object.values(data.logs).reduce((a,x)=>a+(+x.actualMiles||0),0);document.getElementById("currentWeek").textContent=w;document.getElementById("doneCount").textContent=done+"/"+total;document.getElementById("totalMiles").textContent=miles.toFixed(1);document.getElementById("overallBar").style.width=(done/total*100)+"%";document.getElementById("progressText").textContent=done+" of "+total+" planned sessions marked complete.";let idx=dayIndex(),d=plan[w-1].days[idx];document.getElementById("todayLabel").textContent=["MON","TUE","WED","THU","FRI","SAT","SUN"][idx];document.getElementById("todayWorkout").innerHTML="<strong>"+d[0]+" · "+d[1]+"</strong><p>"+d[2]+"</p>";}
+function renderLog(){let w=+(document.getElementById("logWeek").value||1),l=data.logs[w]||{};["actualMiles","bestWorkout","calfStatus","effort","notes"].forEach(k=>document.getElementById(k).value=l[k]??(k==="calfStatus"?"No symptoms":k==="effort"?"Moderate":""));document.getElementById("mile3").value=data.benchmarks.mile3||"";document.getElementById("mile8").value=data.benchmarks.mile8||"";document.getElementById("mile12").value=data.benchmarks.mile12||""}
+function saveLog(){let w=document.getElementById("logWeek").value;data.logs[w]={};["actualMiles","bestWorkout","calfStatus","effort","notes"].forEach(k=>data.logs[w][k]=document.getElementById(k).value);localStorage.setItem(KEY,JSON.stringify(data));renderHome();document.getElementById("saveStatus").textContent="Week "+w+" log saved on this device."}
+function saveBenchmarks(){data.benchmarks={mile3:document.getElementById("mile3").value,mile8:document.getElementById("mile8").value,mile12:document.getElementById("mile12").value};localStorage.setItem(KEY,JSON.stringify(data));document.getElementById("benchStatus").textContent="Benchmark results saved."}
+function calcPace(){let s=document.getElementById("targetTime").value.trim(),m=s.match(/^(\d+):([0-5]?\d)$/);if(!m){document.getElementById("paceResult").textContent="Enter time as mm:ss (example 21:30).";return}let sec=+m[1]*60+ +m[2],mile=sec/3,fmt=Math.floor(mile/60)+":"+String(Math.round(mile%60)).padStart(2,"0");document.getElementById("paceResult").textContent="Average pace: "+fmt+" per mile."}
+function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="3-mile-coach-backup.json";a.click();URL.revokeObjectURL(a.href)}
+function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{data={...data,...JSON.parse(r.result)};save();alert("Backup imported.");}catch(err){alert("Could not read that backup file.");}};r.readAsText(f)}
+function resetData(){if(confirm("Delete all workout checkmarks, logs, and benchmark data on this device?")){localStorage.removeItem(KEY);data={startDate:"",done:{},logs:{},benchmarks:{}};init();}}
+function renderAll(){renderHome();renderPlan()}
+function init(){load();let now=new Date();let iso=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");if(!data.startDate)data.startDate=iso;document.getElementById("startDate").value=data.startDate;document.getElementById("startDate").onchange=e=>{data.startDate=e.target.value;save()};["weekSelect","logWeek"].forEach(id=>{let el=document.getElementById(id);el.innerHTML=plan.map((p,i)=>`<option value="${i+1}">Week ${i+1}</option>`).join("");});document.getElementById("weekSelect").value=calcCurrentWeek();document.getElementById("weekSelect").onchange=renderPlan;document.getElementById("logWeek").value=calcCurrentWeek();document.getElementById("logWeek").onchange=renderLog;renderLog();renderAll()}
+init();
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));}
+</script>
+</body></html>
