@@ -5,12 +5,12 @@ const URL="https://ixfsdsetzghgzepwmypx.supabase.co";
 const KEY="sb_publishable_Eh5HciV0-rmIYLBe7Y5mpQ_Tth_-BE1";
 const SESSION_KEY="threeMileCoach.supabase.session";
 const LOCAL_KEY="threeMileCoach.daily.v1";
-let session=null, daily={logs:{},weights:{}}, busy=false;
+let session=null, daily={logs:{},weights:{},dirty:{}}, busy=false;
 const $=id=>document.getElementById(id);
 const htmlEscape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function message(s){$("cloudStatus").textContent=s;}
 function localSave(){localStorage.setItem(LOCAL_KEY,JSON.stringify(daily));}
-function localLoad(){try{const x=JSON.parse(localStorage.getItem(LOCAL_KEY)||"{}");daily={logs:x.logs||{},weights:x.weights||{}};}catch{}}
+function localLoad(){try{const x=JSON.parse(localStorage.getItem(LOCAL_KEY)||"{}");daily={logs:x.logs||{},weights:x.weights||{},dirty:x.dirty||{}};}catch{}}
 function loadSession(){try{session=JSON.parse(localStorage.getItem(SESSION_KEY)||"null");}catch{session=null;}}
 function setSession(x){session=x; if(x)localStorage.setItem(SESSION_KEY,JSON.stringify(x));else localStorage.removeItem(SESSION_KEY);renderAuth();}
 async function request(path,opts={}){
@@ -105,25 +105,30 @@ async function saveDaily(){
  for(const k of ["distance","duration","calf","effort","notes"])x[k]=$("daily_"+k).value;
  daily.logs[date]=x;
  if(new Date(date+"T12:00:00").getDay()===1&&$("daily_weight").value!=="")daily.weights[date]={weight:$("daily_weight").value};
- localSave();message("Saved locally"+(session?.access_token?"; uploading…":". Sign in to sync."));
- if(session?.access_token){try{await uploadDate(date);message("Saved locally and synced to Supabase.");}catch(e){message("Saved locally; cloud upload failed: "+e.message);}}
+ daily.dirty[date]=true;localSave();message("Saved locally"+(session?.access_token?"; uploading…":". Sign in to sync."));
+ if(session?.access_token){try{await uploadDate(date);delete daily.dirty[date];localSave();message("Saved locally and synced to Supabase.");}catch(e){message("Saved locally; cloud upload failed: "+e.message);}}
 }
 async function sync(){
  if(busy||!session?.access_token)return;busy=true;message("Syncing…");
  try{
-  // Upload local-only dates first, then fetch cloud state. Existing local edits take precedence.
-  for(const date of new Set([...Object.keys(daily.logs),...Object.keys(daily.weights)]))await uploadDate(date);
+  // Only upload edits that have not yet been confirmed by Supabase.
+  // Never push all cached records: stale caches on a second device must not overwrite cloud data.
+  for(const date of Object.keys(daily.dirty)){
+   await uploadDate(date);
+   delete daily.dirty[date];localSave();
+  }
   const logs=await request("/rest/v1/daily_logs?select=log_date,completed,calf_status,effort,notes&order=log_date.asc");
   const weights=await request("/rest/v1/weight_entries?select=entry_date,weight,weight_unit&order=entry_date.asc");
   for(const row of logs||[]){
-   if(daily.logs[row.log_date])continue;
+   if(daily.dirty[row.log_date])continue;
    let extra={};try{extra=JSON.parse(row.notes||"{}");}catch{extra={text:row.notes||""};}
-   daily.logs[row.log_date]={completed:row.completed,calf:row.calf_status||"",effort:({2:"Easy",5:"Moderate",7:"Hard",9:"Very hard"}[row.effort]||""),notes:extra.text||"",distance:extra.distance_miles||"",duration:extra.duration_minutes||""};
+   daily.logs[row.log_date]={completed:row.completed,calf:row.calf_status||"",effort:({2:"Easy",5:"Moderate",7:"Hard",9:"Very hard"}[row.effort]||""),notes:extra.text||"",distance:extra.distance_miles??"",duration:extra.duration_minutes??""};
   }
-  for(const row of weights||[])if(!daily.weights[row.entry_date])daily.weights[row.entry_date]={weight:row.weight,unit:row.weight_unit};
+  for(const row of weights||[])if(!daily.dirty[row.entry_date])daily.weights[row.entry_date]={weight:row.weight,unit:row.weight_unit};
   localSave();renderDaily();message("Synced "+(logs?.length||0)+" daily logs and "+(weights?.length||0)+" weigh-ins.");
  }catch(e){message("Sync incomplete; local data preserved: "+e.message);}
  finally{busy=false;}
 }
+
 localLoad();loadSession();showDaily();
 })();
