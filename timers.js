@@ -25,11 +25,11 @@ function sound(long=false){
   audio=audio||new (window.AudioContext||window.webkitAudioContext)();
   if(audio.state==="suspended")audio.resume().catch(()=>{});
   const o=audio.createOscillator(),g=audio.createGain();
-  const startAt=audio.currentTime,duration=long?.65:.12;
-  o.type="sine";o.frequency.value=long?1046:880;
+  const startAt=audio.currentTime,duration=long?1.5:.16;
+  o.type="square";o.frequency.value=long?740:1100;
   g.gain.setValueAtTime(.0001,startAt);
-  g.gain.exponentialRampToValueAtTime(.18,startAt+.015);
-  g.gain.setValueAtTime(.18,startAt+duration-.035);
+  g.gain.exponentialRampToValueAtTime(long?.13:.17,startAt+.015);
+  g.gain.setValueAtTime(long?.13:.17,startAt+duration-.035);
   g.gain.exponentialRampToValueAtTime(.0001,startAt+duration);
   o.connect(g);g.connect(audio.destination);
   o.start(startAt);o.stop(startAt+duration+.01);
@@ -43,9 +43,9 @@ function display(){const s=segments[index];$("timerClock").textContent=fmt(remai
 }
 function finish(){stop();segments=[];remaining=0;display();$("timerPhase").textContent="Workout complete!";$("timerMessage").textContent="Workout complete.";sound(true);}
 function advance(){index++;if(index>=segments.length){finish();return;}remaining=segments[index].seconds;deadline=performance.now()+remaining*1000;startPhaseSound();display();}
-function tick(){if(!running)return;const left=Math.max(0,Math.ceil((deadline-performance.now())/1000));if(left!==remaining){remaining=left;display();}if(left>=1&&left<=3&&left<lastCountdown){sound(false);lastCountdown=left;}if(deadline<=performance.now())advance();}
+function tick(){if(!running)return;const left=Math.max(0,Math.ceil((deadline-performance.now())/1000));if(left!==remaining){remaining=left;display();}if(left<lastCountdown){for(let second=Math.min(3,lastCountdown-1);second>=Math.max(1,left);second--)sound(false);lastCountdown=left;}if(deadline<=performance.now())advance();}
 function start(){try{const t=readForm();segments=sequence(t);if(!segments.length)throw Error("Add at least one interval.");stop();current=t;locked=true;index=0;remaining=segments[0].seconds;running=true;deadline=performance.now()+remaining*1000;tickHandle=setInterval(tick,100);startPhaseSound();display();$("timerMessage").textContent="Timer running. Keep this page open and visible for reliable cues.";}catch(e){$("timerMessage").textContent=e.message;}}
-function pause(){if(!segments.length)return;if(running){remaining=Math.max(0,Math.ceil((deadline-performance.now())/1000));running=false;}else{running=true;deadline=performance.now()+remaining*1000;}display();}
+function pause(){if(!segments.length)return;if(running){remaining=Math.max(0,Math.ceil((deadline-performance.now())/1000));running=false;}else{running=true;deadline=performance.now()+remaining*1000;lastCountdown=Math.min(4,remaining+1);}display();}
 function skip(){if(!segments.length)return;advance();}
 function reset(){stop();segments=[];index=0;remaining=0;display();$("timerMessage").textContent="Timer reset.";}
 function saveTimer(){try{const t=readForm();if(!t.steps.length)throw Error("Add an interval before saving.");t.id="timer-"+Date.now();saved.push(t);persist();renderSaved();$("timerSelect").value=t.id;current=t;$("timerMessage").textContent="Saved on this device: "+t.name;}catch(e){$("timerMessage").textContent=e.message;}}
