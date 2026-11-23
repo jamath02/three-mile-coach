@@ -273,4 +273,5 @@ function init(){load();let now=new Date();let iso=now.getFullYear()+"-"+String(n
 init();
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));}
 </script>
+<script src="./cloud.js"></script>
 </body></html>
