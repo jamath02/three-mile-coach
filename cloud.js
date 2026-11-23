@@ -57,6 +57,7 @@ function showDaily(){
  <div id="cloudAccount" hidden><div class="row"><span id="cloudAccountEmail" class="small"></span><button id="cloudSignOut" class="secondary">Sign out</button></div>
  <button id="cloudSync" class="secondary" style="width:100%;margin-top:12px">Sync daily logs and weigh-ins</button>
  <button id="garminSync" class="secondary" style="width:100%;margin-top:12px">Sync Garmin activities</button>
+ <div id="garminSyncHealth" class="small" style="margin-top:12px" role="status" aria-live="polite">Garmin sync status loading…</div>
  <div id="garminActivities" class="small" style="margin-top:12px" aria-live="polite"></div></div>
  <p class="small" id="cloudStatus" role="status" aria-live="polite">Daily entries save locally; sign in to sync to your account.</p></div>
  <div class="card"><h2>Daily training log</h2>
@@ -76,7 +77,7 @@ function showDaily(){
  $("cloudSignOut").addEventListener("click",()=>{setSession(null);message("Signed out. Local entries are retained.");});
  $("cloudSync").addEventListener("click",sync);
  $("garminSync").addEventListener("click",syncGarmin);
- if(session?.access_token)loadGarminActivities().catch(()=>{});
+ if(session?.access_token){loadGarminActivities().catch(()=>{});loadGarminSyncHealth().catch(()=>{});}
  $("dailySave").addEventListener("click",saveDaily);
  renderAuth();renderDaily();
 }
@@ -85,7 +86,7 @@ async function signIn(){
   const email=$("cloudEmail").value.trim(),password=$("cloudPassword").value;
   if(!email||!password){message("Enter your email and password.");return;}
   const x=await request("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email,password})});
-  setSession(x);$("cloudPassword").value="";message("Signed in. Select Sync to retrieve cloud records.");await loadGarminActivities();
+  setSession(x);$("cloudPassword").value="";message("Signed in. Select Sync to retrieve cloud records.");await loadGarminActivities();await loadGarminSyncHealth();
  }catch(e){message("Sign-in failed: "+e.message);}
 }
 async function upsert(table,record,conflict){
@@ -134,6 +135,23 @@ async function sync(){
  finally{busy=false;}
 }
 
+async function loadGarminSyncHealth(){
+ const el=$("garminSyncHealth");if(!el||!session?.access_token)return;
+ try{
+  const rows=await request("/rest/v1/garmin_sync_status?select=last_attempt_at,last_success_at,last_result,last_processed_count,last_fetched_count,last_trigger,last_error&limit=1");
+  const s=rows?.[0];
+  if(!s){el.textContent="Garmin sync status: no recorded sync yet. Automatic schedule: every 4 hours (UTC).";return;}
+  const format=x=>x?new Date(x).toLocaleString():"Never";
+  const state=s.last_result==="success"?"Successful":s.last_result==="error"?"Failed":"Unknown";
+  el.textContent="Garmin sync: "+state+" · Last success: "+format(s.last_success_at)+
+   " · Last attempt: "+format(s.last_attempt_at)+
+   " ("+(s.last_trigger||"unknown")+")"+
+   " · Activities processed: "+(s.last_processed_count??0)+
+   " of "+(s.last_fetched_count??0)+" fetched"+
+   (s.last_error?" · Error: "+s.last_error:"")+
+   " · Scheduled every 4 hours (UTC)";
+ }catch(e){el.textContent="Garmin sync status unavailable: "+e.message;}
+}
 async function loadGarminActivities(){
  if(!session?.access_token)return;
  const items=await request("/rest/v1/activities?source=eq.garmin&select=activity_name,activity_type,started_at,distance_meters,duration_seconds,average_heart_rate&order=started_at.desc&limit=10");
@@ -153,9 +171,9 @@ async function syncGarmin(){
  busy=true;const btn=$("garminSync");btn.disabled=true;message("Importing Garmin activities…");
  try{
   const result=await request("/functions/v1/garmin-import",{method:"POST",body:"{}"});
-  await loadGarminActivities();
+  await loadGarminActivities();await loadGarminSyncHealth();
   message("Garmin sync complete: "+result.imported+" activities saved from "+result.fetched+" fetched.");
- }catch(e){message("Garmin sync failed: "+e.message);}
+ }catch(e){await loadGarminSyncHealth();message("Garmin sync failed: "+e.message);}
  finally{busy=false;btn.disabled=false;}
 }
 
