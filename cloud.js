@@ -92,11 +92,11 @@ async function uploadDate(date){
  const user=session.user?.id;if(!user)throw Error("No authenticated user ID");
  const x=daily.logs[date];
  if(x){
-  await upsert("daily_logs",{user_id:user,log_date:date,completed:!!x.completed,calf_status:x.calf||null,effort:x.effort||null,notes:JSON.stringify({text:x.notes||"",distance_miles:x.distance||null,duration_minutes:x.duration||null})},"user_id,log_date");
+  await upsert("daily_logs",{user_id:user,log_date:date,completed:!!x.completed,calf_status:x.calf||null,effort:({"Easy":2,"Moderate":5,"Hard":7,"Very hard":9}[x.effort]??null),notes:JSON.stringify({text:x.notes||"",distance_miles:x.distance||null,duration_minutes:x.duration||null})},"user_id,log_date");
  }
  const w=daily.weights[date];
  if(w?.weight!==undefined&&w.weight!==""){
-  await upsert("weight_entries",{user_id:user,entry_date:date,weight:Number(w.weight),unit:"lb"},"user_id,entry_date");
+  await upsert("weight_entries",{user_id:user,entry_date:date,weight:Number(w.weight),weight_unit:"lb"},"user_id,entry_date");
  }
 }
 async function saveDaily(){
@@ -114,13 +114,13 @@ async function sync(){
   // Upload local-only dates first, then fetch cloud state. Existing local edits take precedence.
   for(const date of new Set([...Object.keys(daily.logs),...Object.keys(daily.weights)]))await uploadDate(date);
   const logs=await request("/rest/v1/daily_logs?select=log_date,completed,calf_status,effort,notes&order=log_date.asc");
-  const weights=await request("/rest/v1/weight_entries?select=entry_date,weight,unit&order=entry_date.asc");
+  const weights=await request("/rest/v1/weight_entries?select=entry_date,weight,weight_unit&order=entry_date.asc");
   for(const row of logs||[]){
    if(daily.logs[row.log_date])continue;
    let extra={};try{extra=JSON.parse(row.notes||"{}");}catch{extra={text:row.notes||""};}
-   daily.logs[row.log_date]={completed:row.completed,calf:row.calf_status||"",effort:row.effort||"",notes:extra.text||"",distance:extra.distance_miles||"",duration:extra.duration_minutes||""};
+   daily.logs[row.log_date]={completed:row.completed,calf:row.calf_status||"",effort:({2:"Easy",5:"Moderate",7:"Hard",9:"Very hard"}[row.effort]||""),notes:extra.text||"",distance:extra.distance_miles||"",duration:extra.duration_minutes||""};
   }
-  for(const row of weights||[])if(!daily.weights[row.entry_date])daily.weights[row.entry_date]={weight:row.weight,unit:row.unit};
+  for(const row of weights||[])if(!daily.weights[row.entry_date])daily.weights[row.entry_date]={weight:row.weight,unit:row.weight_unit};
   localSave();renderDaily();message("Synced "+(logs?.length||0)+" daily logs and "+(weights?.length||0)+" weigh-ins.");
  }catch(e){message("Sync incomplete; local data preserved: "+e.message);}
  finally{busy=false;}
