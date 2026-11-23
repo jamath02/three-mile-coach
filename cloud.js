@@ -55,7 +55,9 @@ function showDaily(){
  <label>Password</label><input id="cloudPassword" type="password" autocomplete="current-password">
  <button id="cloudSignIn" style="width:100%;margin-top:12px">Sign in</button></div>
  <div id="cloudAccount" hidden><div class="row"><span id="cloudAccountEmail" class="small"></span><button id="cloudSignOut" class="secondary">Sign out</button></div>
- <button id="cloudSync" class="secondary" style="width:100%;margin-top:12px">Sync daily logs and weigh-ins</button></div>
+ <button id="cloudSync" class="secondary" style="width:100%;margin-top:12px">Sync daily logs and weigh-ins</button>
+ <button id="garminSync" class="secondary" style="width:100%;margin-top:12px">Sync Garmin activities</button>
+ <div id="garminActivities" class="small" style="margin-top:12px" aria-live="polite"></div></div>
  <p class="small" id="cloudStatus" role="status" aria-live="polite">Daily entries save locally; sign in to sync to your account.</p></div>
  <div class="card"><h2>Daily training log</h2>
  <label>Date</label><input type="date" id="dailyDate">
@@ -73,6 +75,8 @@ function showDaily(){
  $("cloudSignIn").addEventListener("click",signIn);
  $("cloudSignOut").addEventListener("click",()=>{setSession(null);message("Signed out. Local entries are retained.");});
  $("cloudSync").addEventListener("click",sync);
+ $("garminSync").addEventListener("click",syncGarmin);
+ if(session?.access_token)loadGarminActivities().catch(()=>{});
  $("dailySave").addEventListener("click",saveDaily);
  renderAuth();renderDaily();
 }
@@ -81,7 +85,7 @@ async function signIn(){
   const email=$("cloudEmail").value.trim(),password=$("cloudPassword").value;
   if(!email||!password){message("Enter your email and password.");return;}
   const x=await request("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email,password})});
-  setSession(x);$("cloudPassword").value="";message("Signed in. Select Sync to retrieve cloud records.");
+  setSession(x);$("cloudPassword").value="";message("Signed in. Select Sync to retrieve cloud records.");await loadGarminActivities();
  }catch(e){message("Sign-in failed: "+e.message);}
 }
 async function upsert(table,record,conflict){
@@ -128,6 +132,31 @@ async function sync(){
   localSave();renderDaily();message("Synced "+(logs?.length||0)+" daily logs and "+(weights?.length||0)+" weigh-ins.");
  }catch(e){message("Sync incomplete; local data preserved: "+e.message);}
  finally{busy=false;}
+}
+
+async function loadGarminActivities(){
+ if(!session?.access_token)return;
+ const items=await request("/rest/v1/activities?source=eq.garmin&select=activity_name,activity_type,started_at,distance_meters,duration_seconds,average_heart_rate&order=started_at.desc&limit=10");
+ const el=$("garminActivities");if(!el)return;
+ if(!items?.length){el.textContent="No Garmin activities imported yet.";return;}
+ el.innerHTML="<strong>Recent Garmin activities</strong><ul style='padding-left:20px'>"+
+ items.map(a=>{
+  const date=new Date(a.started_at).toLocaleDateString();
+  const miles=a.distance_meters==null?"":(Number(a.distance_meters)/1609.344).toFixed(2)+" mi";
+  const mins=a.duration_seconds==null?"":(Number(a.duration_seconds)/60).toFixed(1)+" min";
+  const hr=a.average_heart_rate==null?"":Math.round(Number(a.average_heart_rate))+" bpm";
+  return "<li>"+[htmlEscape(date),htmlEscape(a.activity_name||a.activity_type||"Activity"),miles,mins,hr].filter(Boolean).join(" · ")+"</li>";
+ }).join("")+"</ul>";
+}
+async function syncGarmin(){
+ if(busy||!session?.access_token)return;
+ busy=true;const btn=$("garminSync");btn.disabled=true;message("Importing Garmin activities…");
+ try{
+  const result=await request("/functions/v1/garmin-import",{method:"POST",body:"{}"});
+  await loadGarminActivities();
+  message("Garmin sync complete: "+result.imported+" activities saved from "+result.fetched+" fetched.");
+ }catch(e){message("Garmin sync failed: "+e.message);}
+ finally{busy=false;btn.disabled=false;}
 }
 
 localLoad();loadSession();showDaily();
