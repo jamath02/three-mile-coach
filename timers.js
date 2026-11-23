@@ -8,7 +8,7 @@ const defaults=[
  {id:"hiit",name:"5 × 5 HIIT Circuit",rounds:5,rest:15,steps:Array.from({length:5},(_,i)=>({name:"Exercise "+(i+1),seconds:40}))},
  {id:"run",name:"Jog / Hard / Sprint",rounds:10,rest:0,steps:[{name:"Jog",seconds:30},{name:"Hard",seconds:20},{name:"Sprint",seconds:10}]}
 ];
-let saved=[],current=null,segments=[],index=0,remaining=0,running=false,deadline=0,tickHandle=null,audio=null,locked=false;
+let saved=[],current=null,segments=[],index=0,remaining=0,running=false,deadline=0,tickHandle=null,audio=null,locked=false,lastCountdown=4;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const fmt=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
 function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||"[]");saved=Array.isArray(v)?v.filter(x=>x&&typeof x.name==="string"&&Array.isArray(x.steps)):[];}catch{saved=[];}}
@@ -20,16 +20,31 @@ function readForm(){const steps=[...document.querySelectorAll("#timerSteps .time
 function stepRow(step){const row=document.createElement("div");row.className="timer-step";row.style.cssText="display:grid;grid-template-columns:minmax(0,1fr) 95px 40px;gap:8px;align-items:end;margin:8px 0";row.innerHTML='<div><label>Phase / exercise</label><input class="timer-name" maxlength="60" placeholder="Exercise" value="'+esc(step.name)+'"></div><div><label>Seconds</label><input class="timer-seconds" type="number" min="1" max="3600" step="1" value="'+step.seconds+'"></div><button type="button" class="secondary timer-remove" aria-label="Remove interval">×</button>';row.querySelector("button").onclick=()=>{row.remove();updateSummary();};$("timerSteps").appendChild(row);}
 function loadTimer(t){stop();current=clone(t);$("timerName").value=t.name;$("timerRounds").value=t.rounds;$("timerRest").value=t.rest;$("timerSteps").replaceChildren();t.steps.forEach(stepRow);updateSummary();$("timerMessage").textContent="Timer loaded. Edit it or press Start.";}
 function updateSummary(){try{const t=readForm();const s=sequence(t);$("timerSummary").textContent=s.length+" phases · "+fmt(s.reduce((n,x)=>n+x.seconds,0))+" total";}catch{$("timerSummary").textContent="Check your timer settings.";}}
-function sound(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();if(audio.state==="suspended")audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type="sine";o.frequency.value=880;g.gain.setValueAtTime(.12,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.18);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+.19);}catch{}}
+function sound(long=false){
+ try{
+  audio=audio||new (window.AudioContext||window.webkitAudioContext)();
+  if(audio.state==="suspended")audio.resume().catch(()=>{});
+  const o=audio.createOscillator(),g=audio.createGain();
+  const startAt=audio.currentTime,duration=long?.65:.12;
+  o.type="sine";o.frequency.value=long?1046:880;
+  g.gain.setValueAtTime(.0001,startAt);
+  g.gain.exponentialRampToValueAtTime(.18,startAt+.015);
+  g.gain.setValueAtTime(.18,startAt+duration-.035);
+  g.gain.exponentialRampToValueAtTime(.0001,startAt+duration);
+  o.connect(g);g.connect(audio.destination);
+  o.start(startAt);o.stop(startAt+duration+.01);
+ }catch{}
+}
+function startPhaseSound(){lastCountdown=4;sound(!!segments[index]?.work);}
 function stop(){running=false;if(tickHandle!==null){clearInterval(tickHandle);tickHandle=null;}locked=false;}
 function display(){const s=segments[index];$("timerClock").textContent=fmt(remaining);$("timerPhase").textContent=s?s.name:"Ready";$("timerPosition").textContent=s?"Round "+s.round+"/"+current.rounds+" · Phase "+(index+1)+"/"+segments.length:"Choose a timer and press Start";$("timerNext").textContent=s&&segments[index+1]?"Next: "+segments[index+1].name+" ("+fmt(segments[index+1].seconds)+")":s?"Final phase":"";
  $("timerClock").style.color=s&&!s.work?"var(--warn)":"var(--accent)";
  $("timerPause").disabled=!segments.length;$("timerSkip").disabled=!segments.length;$("timerPause").textContent=running?"Pause":"Resume";
 }
-function finish(){stop();segments=[];remaining=0;display();$("timerPhase").textContent="Workout complete!";$("timerMessage").textContent="Workout complete.";sound();}
-function advance(){index++;if(index>=segments.length){finish();return;}remaining=segments[index].seconds;deadline=performance.now()+remaining*1000;sound();display();}
-function tick(){if(!running)return;const left=Math.max(0,Math.ceil((deadline-performance.now())/1000));if(left!==remaining){remaining=left;display();}if(deadline<=performance.now())advance();}
-function start(){try{const t=readForm();segments=sequence(t);if(!segments.length)throw Error("Add at least one interval.");stop();current=t;locked=true;index=0;remaining=segments[0].seconds;running=true;deadline=performance.now()+remaining*1000;tickHandle=setInterval(tick,100);sound();display();$("timerMessage").textContent="Timer running. Keep this page open and visible for reliable cues.";}catch(e){$("timerMessage").textContent=e.message;}}
+function finish(){stop();segments=[];remaining=0;display();$("timerPhase").textContent="Workout complete!";$("timerMessage").textContent="Workout complete.";sound(true);}
+function advance(){index++;if(index>=segments.length){finish();return;}remaining=segments[index].seconds;deadline=performance.now()+remaining*1000;startPhaseSound();display();}
+function tick(){if(!running)return;const left=Math.max(0,Math.ceil((deadline-performance.now())/1000));if(left!==remaining){remaining=left;display();}if(left>=1&&left<=3&&left<lastCountdown){sound(false);lastCountdown=left;}if(deadline<=performance.now())advance();}
+function start(){try{const t=readForm();segments=sequence(t);if(!segments.length)throw Error("Add at least one interval.");stop();current=t;locked=true;index=0;remaining=segments[0].seconds;running=true;deadline=performance.now()+remaining*1000;tickHandle=setInterval(tick,100);startPhaseSound();display();$("timerMessage").textContent="Timer running. Keep this page open and visible for reliable cues.";}catch(e){$("timerMessage").textContent=e.message;}}
 function pause(){if(!segments.length)return;if(running){remaining=Math.max(0,Math.ceil((deadline-performance.now())/1000));running=false;}else{running=true;deadline=performance.now()+remaining*1000;}display();}
 function skip(){if(!segments.length)return;advance();}
 function reset(){stop();segments=[];index=0;remaining=0;display();$("timerMessage").textContent="Timer reset.";}
@@ -55,7 +70,7 @@ function init(){
  <div class="two"><button type="button" id="timerStart">Start from beginning</button><button type="button" class="secondary" id="timerPause" disabled>Pause</button></div>
  <div class="two" style="margin-top:8px"><button type="button" class="secondary" id="timerSkip" disabled>Skip phase</button><button type="button" class="ghost" id="timerReset">Reset</button></div>
  <p id="timerMessage" class="small" role="status" aria-live="polite" style="margin-top:12px"></p>
- <p class="small">Audio cues require your device to be unmuted. On phones, keep the app visible and the screen awake; browsers may pause background timers.</p>`;
+ <p class="small">A long beep signals the start of each exercise; three short beeps mark the final three seconds of each phase. Audio cues require your device to be unmuted. On phones, keep the app visible and the screen awake; browsers may pause background timers.</p>`;
  host.insertBefore(section,host.firstChild);load();renderSaved();loadTimer(defaults[0]);
  $("timerLoad").onclick=()=>{const t=[...defaults,...saved].find(t=>t.id===$("timerSelect").value);if(t)loadTimer(t);};
  $("timerDelete").onclick=removeSaved;$("timerAdd").onclick=()=>{stepRow({name:"New exercise",seconds:40});updateSummary();};
