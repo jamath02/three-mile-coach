@@ -47,11 +47,11 @@ Deno.serve(async req=>{
    return [{
     user_id:user.id,source:"garmin",external_id:String(id),
     activity_type:String(type?.typeKey??"unknown"),
-    name:String(a.activityName??"Garmin activity"),
+    activity_name:String(a.activityName??"Garmin activity"),
     started_at:String(start).includes("T")?String(start).replace(" ","T")+(String(start).endsWith("Z")?"":"Z"):String(start).replace(" ","T")+"Z",
-    duration_seconds:duration,distance_meters:distance,pace_seconds_per_km:pace,
-    avg_hr:numeric(a.averageHR),max_hr:numeric(a.maxHR),
-    calories:numeric(a.calories),cadence:numeric(a.averageRunningCadenceInStepsPerMinute),
+    duration_seconds:duration===null?null:Math.round(duration),distance_meters:distance,average_pace_seconds_per_km:pace,
+    average_heart_rate:numeric(a.averageHR)===null?null:Math.round(numeric(a.averageHR)!),max_heart_rate:numeric(a.maxHR)===null?null:Math.round(numeric(a.maxHR)!),
+    calories:numeric(a.calories)===null?null:Math.round(numeric(a.calories)!),average_cadence:numeric(a.averageRunningCadenceInStepsPerMinute),
     raw_data:a
    }];
   });
