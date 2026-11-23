@@ -32,7 +32,7 @@ function sound(long=false){
  try{
   if(!audio||audio.state!=="running"){audioStatus="Audio suspended — tap Test sound";$("timerAudioStatus").textContent=audioStatus;return;}
   const o=audio.createOscillator(),g=audio.createGain();
-  const t=audio.currentTime,d=long?1.5:.2;
+  const t=audio.currentTime,d=long?.8:.2;
   o.type="sine";o.frequency.setValueAtTime(long?750:1250,t);
   g.gain.setValueAtTime(.0001,t);
   g.gain.linearRampToValueAtTime(.3,t+.02);
@@ -75,12 +75,12 @@ function init(){
  </div>
  <div class="two"><button type="button" id="timerStart">Start from beginning</button><button type="button" class="secondary" id="timerPause" disabled>Pause</button></div>
  <div class="two" style="margin-top:8px"><button type="button" class="secondary" id="timerSkip" disabled>Skip phase</button><button type="button" class="ghost" id="timerReset">Reset</button></div>
- <button type="button" class="secondary" id="timerTestSound" style="width:100%;margin-top:10px">Test sounds (1.5s + 3 beeps)</button><p id="timerAudioStatus" class="small">Audio not initialized</p><p id="timerMessage" class="small" role="status" aria-live="polite" style="margin-top:12px"></p>
- <p class="small">A long beep signals the start of each exercise; three short beeps mark the final three seconds of each phase. Audio cues require your device to be unmuted. On phones, keep the app visible and the screen awake; browsers may pause background timers.</p>`;
+ <p id="timerAudioStatus" class="small">Audio not initialized</p><p id="timerMessage" class="small" role="status" aria-live="polite" style="margin-top:12px"></p>
+ <p class="small">A 0.8-second beep signals the start of each exercise; three short beeps mark the final three seconds of each phase. Audio cues require your device to be unmuted. On phones, keep the app visible and the screen awake; browsers may pause background timers.</p>`;
  host.insertBefore(section,host.firstChild);load();renderSaved();loadTimer(defaults[0]);
  $("timerLoad").onclick=()=>{const t=[...defaults,...saved].find(t=>t.id===$("timerSelect").value);if(t)loadTimer(t);};
  $("timerDelete").onclick=removeSaved;$("timerAdd").onclick=()=>{stepRow({name:"New exercise",seconds:40});updateSummary();};
- $("timerTestSound").onclick=async()=>{await unlockAudio();sound(true);setTimeout(()=>sound(false),1800);setTimeout(()=>sound(false),2400);setTimeout(()=>sound(false),3000);};$("timerSave").onclick=saveTimer;$("timerStart").onclick=start;$("timerPause").onclick=pause;$("timerSkip").onclick=skip;$("timerReset").onclick=reset;
+ $("timerSave").onclick=saveTimer;$("timerStart").onclick=start;$("timerPause").onclick=pause;$("timerSkip").onclick=skip;$("timerReset").onclick=reset;
  section.addEventListener("input",e=>{if(e.target.closest("#timerSteps")||["timerRounds","timerRest"].includes(e.target.id))updateSummary();});
  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&running)tick();});
 }
