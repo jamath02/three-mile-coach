@@ -1,10 +1,10 @@
 // Supabase Edge Function: personal Garmin activity import.
-// Deploy with JWT verification enabled. Never expose GARMIN_API_KEY or service role to the browser.
+// Deploy with JWT verification disabled ONLY because this function independently verifies browser JWTs and a dedicated cron secret. Never expose GARMIN_API_KEY or service role to the browser.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
-  "Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info, x-garmin-cron-secret",
   "Access-Control-Allow-Methods":"POST, OPTIONS",
 };
 const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{...corsHeaders,"Content-Type":"application/json","Cache-Control":"no-store"}});
@@ -15,16 +15,26 @@ Deno.serve(async req=>{
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders});
  if(req.method!=="POST")return json({error:"POST required"},405);
  try{
-  const auth=req.headers.get("Authorization");
-  if(!auth?.startsWith("Bearer "))return json({error:"Sign in required"},401);
   const url=required("SUPABASE_URL");
   const anon=required("SUPABASE_ANON_KEY");
   const admin=required("SUPABASE_SERVICE_ROLE_KEY");
   const owner=required("GARMIN_OWNER_USER_ID");
-  const userClient=createClient(url,anon,{global:{headers:{Authorization:auth}}});
-  const {data:{user},error:userError}=await userClient.auth.getUser();
-  if(userError||!user)return json({error:"Invalid user session"},401);
-  if(user.id!==owner)return json({error:"Garmin import not configured for this user"},403);
+  // Cron requests authenticate with a dedicated secret; browser requests use Supabase Auth.
+  const scheduledSecret=req.headers.get("x-garmin-cron-secret");
+  const configuredCronSecret=Deno.env.get("GARMIN_CRON_SECRET");
+  let userId:string;
+  if(scheduledSecret!==null){
+   if(!configuredCronSecret||scheduledSecret!==configuredCronSecret)return json({error:"Invalid scheduled sync credentials"},401);
+   userId=owner;
+  }else{
+   const auth=req.headers.get("Authorization");
+   if(!auth?.startsWith("Bearer "))return json({error:"Sign in required"},401);
+   const userClient=createClient(url,anon,{global:{headers:{Authorization:auth}}});
+   const {data:{user},error:userError}=await userClient.auth.getUser();
+   if(userError||!user)return json({error:"Invalid user session"},401);
+   if(user.id!==owner)return json({error:"Garmin import not configured for this user"},403);
+   userId=user.id;
+  }
 
   const tokenResponse=await fetch("https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token",{
    method:"POST",headers:{Authorization:"ApiKey "+required("GARMIN_API_KEY")}
@@ -52,7 +62,7 @@ Deno.serve(async req=>{
    const distance=numeric(a.distance);
    const pace=duration!==null&&distance!==null&&distance>0?duration/(distance/1000):null;
    return [{
-    user_id:user.id,source:"garmin",external_id:String(id),
+    user_id:userId,source:"garmin",external_id:String(id),
     activity_type:String(type?.typeKey??"unknown"),
     activity_name:String(a.activityName??"Garmin activity"),
     started_at:String(start).includes("T")?String(start).replace(" ","T")+(String(start).endsWith("Z")?"":"Z"):String(start).replace(" ","T")+"Z",
