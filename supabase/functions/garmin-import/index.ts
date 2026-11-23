@@ -24,13 +24,14 @@ Deno.serve(async req=>{
    method:"POST",headers:{Authorization:"ApiKey "+required("GARMIN_API_KEY")}
   });
   if(!tokenResponse.ok)return json({error:"Garmin token request failed",status:tokenResponse.status},502);
-  const tokenJson=await tokenResponse.json();
-  const accessToken=tokenJson.access_token??tokenJson.accessToken;
+  const tokenText=(await tokenResponse.text()).trim();
+  let accessToken=tokenText;
+  if(tokenText.startsWith("{")){const tokenJson=JSON.parse(tokenText);accessToken=tokenJson.access_token??tokenJson.accessToken;}
   if(typeof accessToken!=="string"||!accessToken)return json({error:"Garmin token response did not contain an access token"},502);
 
   const activitiesUrl=new URL("https://personal.connectapi.garmin.com/activitylist-service/activities/search/activities");
   activitiesUrl.searchParams.set("start","0");activitiesUrl.searchParams.set("limit","30");
-  const response=await fetch(activitiesUrl,{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"}});
+  const response=await fetch(activitiesUrl,{headers:{Authorization:"Bearer "+accessToken,Accept:"*/*"}});
   if(!response.ok)return json({error:"Garmin activity request failed",status:response.status},502);
   const body=await response.json();
   const items=Array.isArray(body)?body:Array.isArray(body?.activities)?body.activities:null;
