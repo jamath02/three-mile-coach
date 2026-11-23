@@ -36,22 +36,38 @@ Deno.serve(async req=>{
    userId=user.id;
   }
 
+  const db=createClient(url,admin,{auth:{autoRefreshToken:false,persistSession:false}});
+  const trigger=scheduledSecret!==null?"scheduled":"manual";
+  const attemptAt=new Date().toISOString();
+  // Record failures without erasing the previous successful sync time.
+  const recordStatus=async (fields:Record<string,unknown>)=>{
+   const {error}=await db.from("garmin_sync_status").upsert({
+    user_id:userId,last_attempt_at:attemptAt,last_trigger:trigger,
+    updated_at:new Date().toISOString(),...fields
+   },{onConflict:"user_id"});
+   if(error)console.error("Garmin status write failed:",error.message);
+  };
+  const fail=async (error:string,status:number)=>{
+   await recordStatus({last_result:"error",last_error:error});
+   return json({error},status);
+  };
+  try {
   const tokenResponse=await fetch("https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token",{
    method:"POST",headers:{Authorization:"ApiKey "+required("GARMIN_API_KEY")}
   });
-  if(!tokenResponse.ok)return json({error:"Garmin token request failed",status:tokenResponse.status},502);
+  if(!tokenResponse.ok)return await fail("Garmin token request failed (HTTP "+tokenResponse.status+")",502);
   const tokenText=(await tokenResponse.text()).trim();
   let accessToken=tokenText;
   if(tokenText.startsWith("{")){const tokenJson=JSON.parse(tokenText);accessToken=tokenJson.access_token??tokenJson.accessToken;}
-  if(typeof accessToken!=="string"||!accessToken)return json({error:"Garmin token response did not contain an access token"},502);
+  if(typeof accessToken!=="string"||!accessToken)return await fail("Garmin token response did not contain an access token",502);
 
   const activitiesUrl=new URL("https://personal.connectapi.garmin.com/activitylist-service/activities/search/activities");
   activitiesUrl.searchParams.set("start","0");activitiesUrl.searchParams.set("limit","30");
   const response=await fetch(activitiesUrl,{headers:{Authorization:"Bearer "+accessToken,Accept:"*/*"}});
-  if(!response.ok)return json({error:"Garmin activity request failed",status:response.status},502);
+  if(!response.ok)return await fail("Garmin activity request failed (HTTP "+response.status+")",502);
   const body=await response.json();
   const items=Array.isArray(body)?body:Array.isArray(body?.activities)?body.activities:null;
-  if(!items)return json({error:"Unexpected Garmin activity list response"},502);
+  if(!items)return await fail("Unexpected Garmin activity list response",502);
 
   const rows=items.flatMap((a:Record<string,unknown>)=>{
    const id=a.activityId;
@@ -72,11 +88,16 @@ Deno.serve(async req=>{
     raw_data:a
    }];
   });
-  const db=createClient(url,admin,{auth:{autoRefreshToken:false,persistSession:false}});
   if(rows.length){
    const {error}=await db.from("activities").upsert(rows,{onConflict:"user_id,source,external_id"});
-   if(error)return json({error:"Supabase activity insert failed",detail:error.message},500);
+   if(error)return await fail("Supabase activity insert failed: "+error.message,500);
   }
+  await recordStatus({last_result:"success",last_error:null,last_success_at:new Date().toISOString(),last_processed_count:rows.length,last_fetched_count:items.length});
   return json({ok:true,fetched:items.length,imported:rows.length});
+  }catch(e){
+   const detail=e instanceof Error?e.message:"Unexpected import error";
+   console.error("Garmin import failed:",detail);
+   return await fail("Garmin import failed; check function logs",500);
+  }
  }catch(e){return json({error:e instanceof Error?e.message:"Unexpected import error"},500);}
 });
