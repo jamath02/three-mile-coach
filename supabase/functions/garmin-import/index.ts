@@ -1,0 +1,103 @@
+// Supabase Edge Function: personal Garmin activity import.
+// Deploy with JWT verification disabled ONLY because this function independently verifies browser JWTs and a dedicated cron secret. Never expose GARMIN_API_KEY or service role to the browser.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders={
+  "Access-Control-Allow-Origin":"*",
+  "Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info, x-garmin-cron-secret",
+  "Access-Control-Allow-Methods":"POST, OPTIONS",
+};
+const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{...corsHeaders,"Content-Type":"application/json","Cache-Control":"no-store"}});
+const required=(name:string)=>{const v=Deno.env.get(name);if(!v)throw new Error("Missing server secret: "+name);return v;};
+const numeric=(x:unknown)=>typeof x==="number"&&Number.isFinite(x)?x:null;
+
+Deno.serve(async req=>{
+ if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders});
+ if(req.method!=="POST")return json({error:"POST required"},405);
+ try{
+  const url=required("SUPABASE_URL");
+  const anon=required("SUPABASE_ANON_KEY");
+  const admin=required("SUPABASE_SERVICE_ROLE_KEY");
+  const owner=required("GARMIN_OWNER_USER_ID");
+  // Cron requests authenticate with a dedicated secret; browser requests use Supabase Auth.
+  const scheduledSecret=req.headers.get("x-garmin-cron-secret");
+  const configuredCronSecret=Deno.env.get("GARMIN_CRON_SECRET");
+  let userId:string;
+  if(scheduledSecret!==null){
+   if(!configuredCronSecret||scheduledSecret!==configuredCronSecret)return json({error:"Invalid scheduled sync credentials"},401);
+   userId=owner;
+  }else{
+   const auth=req.headers.get("Authorization");
+   if(!auth?.startsWith("Bearer "))return json({error:"Sign in required"},401);
+   const userClient=createClient(url,anon,{global:{headers:{Authorization:auth}}});
+   const {data:{user},error:userError}=await userClient.auth.getUser();
+   if(userError||!user)return json({error:"Invalid user session"},401);
+   if(user.id!==owner)return json({error:"Garmin import not configured for this user"},403);
+   userId=user.id;
+  }
+
+  const db=createClient(url,admin,{auth:{autoRefreshToken:false,persistSession:false}});
+  const trigger=scheduledSecret!==null?"scheduled":"manual";
+  const attemptAt=new Date().toISOString();
+  // Record failures without erasing the previous successful sync time.
+  const recordStatus=async (fields:Record<string,unknown>)=>{
+   const {error}=await db.from("garmin_sync_status").upsert({
+    user_id:userId,last_attempt_at:attemptAt,last_trigger:trigger,
+    updated_at:new Date().toISOString(),...fields
+   },{onConflict:"user_id"});
+   if(error)console.error("Garmin status write failed:",error.message);
+  };
+  const fail=async (error:string,status:number)=>{
+   await recordStatus({last_result:"error",last_error:error});
+   return json({error},status);
+  };
+  try {
+  const tokenResponse=await fetch("https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token",{
+   method:"POST",headers:{Authorization:"ApiKey "+required("GARMIN_API_KEY")}
+  });
+  if(!tokenResponse.ok)return await fail("Garmin token request failed (HTTP "+tokenResponse.status+")",502);
+  const tokenText=(await tokenResponse.text()).trim();
+  let accessToken=tokenText;
+  if(tokenText.startsWith("{")){const tokenJson=JSON.parse(tokenText);accessToken=tokenJson.access_token??tokenJson.accessToken;}
+  if(typeof accessToken!=="string"||!accessToken)return await fail("Garmin token response did not contain an access token",502);
+
+  const activitiesUrl=new URL("https://personal.connectapi.garmin.com/activitylist-service/activities/search/activities");
+  activitiesUrl.searchParams.set("start","0");activitiesUrl.searchParams.set("limit","30");
+  const response=await fetch(activitiesUrl,{headers:{Authorization:"Bearer "+accessToken,Accept:"*/*"}});
+  if(!response.ok)return await fail("Garmin activity request failed (HTTP "+response.status+")",502);
+  const body=await response.json();
+  const items=Array.isArray(body)?body:Array.isArray(body?.activities)?body.activities:null;
+  if(!items)return await fail("Unexpected Garmin activity list response",502);
+
+  const rows=items.flatMap((a:Record<string,unknown>)=>{
+   const id=a.activityId;
+   const start=a.startTimeGMT??a.startTimeLocal;
+   if(id==null||!start)return [];
+   const type=a.activityType as Record<string,unknown>|undefined;
+   const duration=numeric(a.duration);
+   const distance=numeric(a.distance);
+   const pace=duration!==null&&distance!==null&&distance>0?duration/(distance/1000):null;
+   return [{
+    user_id:userId,source:"garmin",external_id:String(id),
+    activity_type:String(type?.typeKey??"unknown"),
+    activity_name:String(a.activityName??"Garmin activity"),
+    started_at:String(start).includes("T")?String(start).replace(" ","T")+(String(start).endsWith("Z")?"":"Z"):String(start).replace(" ","T")+"Z",
+    duration_seconds:duration===null?null:Math.round(duration),distance_meters:distance,average_pace_seconds_per_km:pace,
+    average_heart_rate:numeric(a.averageHR)===null?null:Math.round(numeric(a.averageHR)!),max_heart_rate:numeric(a.maxHR)===null?null:Math.round(numeric(a.maxHR)!),
+    calories:numeric(a.calories)===null?null:Math.round(numeric(a.calories)!),average_cadence:numeric(a.averageRunningCadenceInStepsPerMinute),
+    raw_data:a
+   }];
+  });
+  if(rows.length){
+   const {error}=await db.from("activities").upsert(rows,{onConflict:"user_id,source,external_id"});
+   if(error)return await fail("Supabase activity insert failed: "+error.message,500);
+  }
+  await recordStatus({last_result:"success",last_error:null,last_success_at:new Date().toISOString(),last_processed_count:rows.length,last_fetched_count:items.length});
+  return json({ok:true,fetched:items.length,imported:rows.length});
+  }catch(e){
+   const detail=e instanceof Error?e.message:"Unexpected import error";
+   console.error("Garmin import failed:",detail);
+   return await fail("Garmin import failed; check function logs",500);
+  }
+ }catch(e){return json({error:e instanceof Error?e.message:"Unexpected import error"},500);}
+});
