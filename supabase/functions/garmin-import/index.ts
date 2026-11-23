@@ -2,11 +2,17 @@
 // Deploy with JWT verification enabled. Never expose GARMIN_API_KEY or service role to the browser.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
+const corsHeaders={
+  "Access-Control-Allow-Origin":"*",
+  "Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Methods":"POST, OPTIONS",
+};
+const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{...corsHeaders,"Content-Type":"application/json","Cache-Control":"no-store"}});
 const required=(name:string)=>{const v=Deno.env.get(name);if(!v)throw new Error("Missing server secret: "+name);return v;};
 const numeric=(x:unknown)=>typeof x==="number"&&Number.isFinite(x)?x:null;
 
 Deno.serve(async req=>{
+ if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders});
  if(req.method!=="POST")return json({error:"POST required"},405);
  try{
   const auth=req.headers.get("Authorization");
