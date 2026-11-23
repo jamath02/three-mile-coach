@@ -1,5 +1,5 @@
-const CACHE="three-mile-coach-v4";
-const ASSETS=["./","./index.html","./cloud.js","./timers.js","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
+const CACHE="three-mile-coach-v5";
+const ASSETS=["./","./index.html","./cloud.js","./timers.js?v=audio5","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener("activate",e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))])));
 self.addEventListener("fetch",e=>{
